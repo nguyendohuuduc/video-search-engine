@@ -21,12 +21,15 @@ at personal-library scale).
       Postgres storage), validated against real video
 - [x] **Phase 2** — FastAPI backend (upload/search endpoints, background job worker),
       validated end-to-end against real requests
-- [ ] **Phase 3** — React frontend
+- [x] **Phase 3** — React frontend (search bar + results), validated end-to-end
+      against the live backend in a browser
 - [x] **Phase 4** — video player with marker-strip timeline, click-to-seek from
       results and markers, validated end-to-end in a browser
 - [x] **Phase 5** — upload UI with status polling, video library view, validated
       end-to-end in a browser
-- [ ] **Phase 6** — polish
+- [x] **YouTube link import** — paste a URL instead of a file, same async
+      upload/status-polling flow
+- [ ] **Phase 6** — polish (not planned for now)
 
 ## Setup
 
@@ -55,12 +58,17 @@ python3 -m venv .venv
 `ffmpeg` doesn't need to be installed system-wide — frame extraction uses the static
 binary bundled by `imageio-ffmpeg`.
 
-### 3. Frontend (not built yet — needs Node.js)
+### 3. Frontend (needs Node.js)
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 nvm install 20 && nvm use 20
+cd frontend
+npm install
+npm run dev -- --host
 ```
+
+Dev server proxies `/api` and `/media` to the backend on `:8000` (see `vite.config.ts`).
 
 ## Running the server
 
@@ -70,8 +78,8 @@ cd backend
 ```
 
 Swagger UI at `http://127.0.0.1:8000/docs` — upload a video, poll its status, run searches,
-all without a frontend. Endpoints: `POST /api/videos` (upload), `GET /api/videos`,
-`GET /api/videos/{id}` (status), `POST /api/search`.
+all without a frontend. Endpoints: `POST /api/videos` (file upload), `POST /api/videos/from-youtube`
+(`{"url": "..."}`), `GET /api/videos`, `GET /api/videos/{id}` (status), `POST /api/search`.
 
 ## Usage (CLI, useful for one-off ingestion/testing without the server)
 
@@ -95,16 +103,33 @@ query, prints the top-3 matching frames and transcript chunks by cosine similari
 ```
 backend/
   app/
-    config.py            # paths, model names, tunables
-    db.py                 # Postgres connection + schema (pgvector, HNSW indexes)
+    main.py                 # FastAPI app, lifespan (schema init, model warmup, worker thread)
+    config.py               # paths, model names, tunables
+    db.py                   # Postgres connection pool + schema (pgvector, HNSW indexes)
+    routers/
+      videos.py             # upload, YouTube import, list, status
+      search.py             # search endpoint
+    search/
+      retrieval.py          # dual KNN query, score normalization, merge
     ingestion/
-      frames.py           # ffmpeg frame sampling
-      transcribe.py        # faster-whisper + chunking into windows
+      frames.py             # ffmpeg frame sampling
+      transcribe.py         # faster-whisper + chunking into windows
       embed_clip.py         # CLIP image/text embeddings
-      embed_text.py          # sentence-transformer text embeddings
-      pipeline.py             # orchestrates ingestion end-to-end
+      embed_text.py         # sentence-transformer text embeddings
+      youtube.py            # yt-dlp download (title lookup + video download)
+      pipeline.py           # orchestrates ingestion end-to-end
+      jobs.py                # background worker thread + queue
     cli/
-      ingest_video.py          # standalone pipeline test/entrypoint
+      ingest_video.py       # standalone pipeline test/entrypoint
   requirements.txt
-frontend/                       # not built yet
+frontend/
+  src/
+    App.tsx
+    api/client.ts           # typed fetch wrappers
+    components/
+      UploadPanel.tsx       # file upload + YouTube link import, with status polling
+      VideoLibrary.tsx      # list of ingested videos, click to play
+      SearchBar.tsx
+      ResultsList.tsx / ResultCard.tsx
+      VideoPlayer.tsx       # native <video> + marker-strip timeline
 ```
