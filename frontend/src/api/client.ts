@@ -3,6 +3,7 @@ export type MatchType = "frame" | "transcript"
 export interface SearchResult {
   video_id: number
   video_title: string
+  video_url: string
   timestamp: number
   match_type: MatchType
   score: number

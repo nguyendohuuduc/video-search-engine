@@ -8,13 +8,18 @@ function formatTimestamp(seconds: number): string {
 
 interface ResultCardProps {
   result: SearchResult
+  onSelect: (result: SearchResult) => void
 }
 
-export function ResultCard({ result }: ResultCardProps) {
+export function ResultCard({ result, onSelect }: ResultCardProps) {
   const { video_title, timestamp, match_type, score, snippet, thumbnail_url } = result
 
   return (
-    <div className="flex gap-3 rounded-lg border border-gray-200 p-3 hover:border-purple-300">
+    <button
+      type="button"
+      onClick={() => onSelect(result)}
+      className="flex w-full gap-3 rounded-lg border border-gray-200 p-3 text-left hover:border-purple-300"
+    >
       <div className="h-20 w-32 flex-shrink-0 overflow-hidden rounded bg-gray-100">
         {thumbnail_url ? (
           <img src={thumbnail_url} alt="" className="h-full w-full object-cover" />
@@ -41,6 +46,6 @@ export function ResultCard({ result }: ResultCardProps) {
 
         {snippet && <p className="mt-1 truncate text-sm text-gray-600">"{snippet}"</p>}
       </div>
-    </div>
+    </button>
   )
 }

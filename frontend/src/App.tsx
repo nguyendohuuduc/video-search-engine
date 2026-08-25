@@ -2,12 +2,21 @@ import { useState } from "react"
 import { searchVideos, type SearchResult } from "./api/client"
 import { ResultsList } from "./components/ResultsList"
 import { SearchBar } from "./components/SearchBar"
+import { VideoPlayer } from "./components/VideoPlayer"
+
+interface Selection {
+  videoId: number
+  videoTitle: string
+  videoUrl: string
+  timestamp: number
+}
 
 function App() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selection, setSelection] = useState<Selection | null>(null)
 
   async function handleSearch(query: string) {
     setLoading(true)
@@ -23,6 +32,21 @@ function App() {
     }
   }
 
+  function handleSelectResult(result: SearchResult) {
+    setSelection({
+      videoId: result.video_id,
+      videoTitle: result.video_title,
+      videoUrl: result.video_url,
+      timestamp: result.timestamp,
+    })
+  }
+
+  const markersForSelectedVideo = selection
+    ? results
+        .filter((r) => r.video_id === selection.videoId)
+        .map((r) => ({ timestamp: r.timestamp, matchType: r.match_type }))
+    : []
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="mb-1 text-2xl font-semibold text-gray-900">Video Search</h1>
@@ -32,8 +56,20 @@ function App() {
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
+      {selection && (
+        <div className="mt-6">
+          <VideoPlayer
+            videoId={selection.videoId}
+            videoTitle={selection.videoTitle}
+            videoUrl={selection.videoUrl}
+            seekTo={selection.timestamp}
+            markers={markersForSelectedVideo}
+          />
+        </div>
+      )}
+
       <div className="mt-6">
-        <ResultsList results={results} hasSearched={hasSearched} />
+        <ResultsList results={results} hasSearched={hasSearched} onSelect={handleSelectResult} />
       </div>
     </div>
   )

@@ -21,7 +21,7 @@ def _normalize_scores(results: list[dict]) -> None:
 def _search_frames(conn, qvec: np.ndarray, k: int) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT s.video_id, s.start_time, s.frame_path, v.original_name,
+        SELECT s.video_id, s.start_time, s.frame_path, v.original_name, v.filename,
                1 - (s.frame_embedding <=> %(qvec)s) AS score
         FROM segments s JOIN videos v ON v.id = s.video_id
         WHERE s.frame_embedding IS NOT NULL
@@ -34,20 +34,21 @@ def _search_frames(conn, qvec: np.ndarray, k: int) -> list[dict]:
         {
             "video_id": video_id,
             "video_title": title,
+            "video_url": f"/media/videos/{filename}",
             "timestamp": start_time,
             "match_type": "frame",
             "score": float(score),
             "snippet": None,
             "thumbnail_path": frame_path,
         }
-        for video_id, start_time, frame_path, title, score in rows
+        for video_id, start_time, frame_path, title, filename, score in rows
     ]
 
 
 def _search_transcripts(conn, qvec: np.ndarray, k: int) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT s.video_id, s.start_time, s.text, v.original_name,
+        SELECT s.video_id, s.start_time, s.text, v.original_name, v.filename,
                1 - (s.transcript_embedding <=> %(qvec)s) AS score
         FROM segments s JOIN videos v ON v.id = s.video_id
         WHERE s.transcript_embedding IS NOT NULL
@@ -60,13 +61,14 @@ def _search_transcripts(conn, qvec: np.ndarray, k: int) -> list[dict]:
         {
             "video_id": video_id,
             "video_title": title,
+            "video_url": f"/media/videos/{filename}",
             "timestamp": start_time,
             "match_type": "transcript",
             "score": float(score),
             "snippet": text,
             "thumbnail_path": None,
         }
-        for video_id, start_time, text, title, score in rows
+        for video_id, start_time, text, title, filename, score in rows
     ]
 
 
