@@ -52,3 +52,11 @@ export async function uploadVideo(file: File): Promise<{ video_id: number; statu
   formData.append("file", file)
   return request("/api/videos", { method: "POST", body: formData })
 }
+
+export function uploadVideoFromYoutube(url: string): Promise<{ video_id: number; status: VideoStatus }> {
+  return request("/api/videos/from-youtube", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  })
+}

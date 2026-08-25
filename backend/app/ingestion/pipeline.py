@@ -114,3 +114,50 @@ def ingest_video_file(source_path: Path, original_name: str | None = None) -> in
     video_id = create_video_record(source_path, original_name)
     process_video(video_id)
     return video_id
+
+
+def create_video_record_from_url(url: str) -> int:
+    """Registers a video from a URL (e.g. YouTube) without downloading it yet -
+    just a quick title lookup. Fast, safe to call inline from a request handler.
+    The actual download + processing happens via process_youtube_video(),
+    meant to run on the background worker.
+    """
+    from app.ingestion.youtube import fetch_title
+
+    title = fetch_title(url)
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "INSERT INTO videos (filename, original_name, status) VALUES ('', %s, 'pending') RETURNING id",
+            (title,),
+        ).fetchone()
+        video_id = row[0]
+    finally:
+        conn.close()
+
+    return video_id
+
+
+def process_youtube_video(video_id: int, url: str) -> None:
+    """Downloads a video from a URL (e.g. YouTube), then runs the normal
+    ingestion pipeline on it. Meant to run on the background worker thread.
+    """
+    from app.ingestion.youtube import download_video
+
+    conn = get_connection()
+    try:
+        conn.execute("UPDATE videos SET status = 'processing' WHERE id = %s", (video_id,))
+        print(f"[video {video_id}] downloading from {url}")
+        stored_filename = download_video(video_id, url)
+        print(f"[video {video_id}] downloaded to {stored_filename}")
+        conn.execute("UPDATE videos SET filename = %s WHERE id = %s", (stored_filename, video_id))
+    except Exception as e:
+        conn.execute(
+            "UPDATE videos SET status = 'failed', error = %s WHERE id = %s",
+            (str(e), video_id),
+        )
+        conn.close()
+        return
+    conn.close()
+
+    process_video(video_id)

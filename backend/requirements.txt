@@ -8,5 +8,6 @@ open_clip_torch
 sentence-transformers
 psycopg[binary,pool]
 pgvector
+yt-dlp
 imageio-ffmpeg
 numpy

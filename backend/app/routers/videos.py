@@ -3,12 +3,17 @@ import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from app.db import pool
 from app.ingestion import jobs
-from app.ingestion.pipeline import create_video_record
+from app.ingestion.pipeline import create_video_record, create_video_record_from_url
 
 router = APIRouter(prefix="/videos", tags=["videos"])
+
+
+class YoutubeUploadRequest(BaseModel):
+    url: str
 
 
 def _row_to_dict(row) -> dict:
@@ -36,6 +41,17 @@ async def upload_video(file: UploadFile = File(...)):
         video_id = create_video_record(tmp_path, original_name=file.filename)
 
     jobs.enqueue(video_id)
+    return {"video_id": video_id, "status": "pending"}
+
+
+@router.post("/from-youtube")
+def upload_video_from_youtube(req: YoutubeUploadRequest):
+    try:
+        video_id = create_video_record_from_url(req.url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read that URL: {e}")
+
+    jobs.enqueue_youtube(video_id, req.url)
     return {"video_id": video_id, "status": "pending"}
 
 

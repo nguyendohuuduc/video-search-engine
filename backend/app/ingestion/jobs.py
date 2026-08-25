@@ -1,21 +1,37 @@
 import queue
 import threading
+from dataclasses import dataclass
 
-from app.ingestion.pipeline import process_video
+from app.ingestion.pipeline import process_video, process_youtube_video
 
-_queue: "queue.Queue[int]" = queue.Queue()
+
+@dataclass
+class UploadJob:
+    video_id: int
+
+
+@dataclass
+class YoutubeJob:
+    video_id: int
+    url: str
+
+
+_queue: "queue.Queue[UploadJob | YoutubeJob]" = queue.Queue()
 _worker_thread: threading.Thread | None = None
 
 
 def _worker_loop() -> None:
     while True:
-        video_id = _queue.get()
+        job = _queue.get()
         try:
-            process_video(video_id)
+            if isinstance(job, YoutubeJob):
+                process_youtube_video(job.video_id, job.url)
+            else:
+                process_video(job.video_id)
         except Exception as e:
-            # process_video already records status='failed' on the video row;
-            # this catch just keeps the worker thread alive for the next video.
-            print(f"[worker] video {video_id} failed: {e}")
+            # process_video/process_youtube_video already record status='failed'
+            # on the video row; this catch just keeps the worker thread alive.
+            print(f"[worker] video {job.video_id} failed: {e}")
         finally:
             _queue.task_done()
 
@@ -29,4 +45,8 @@ def start_worker() -> None:
 
 
 def enqueue(video_id: int) -> None:
-    _queue.put(video_id)
+    _queue.put(UploadJob(video_id))
+
+
+def enqueue_youtube(video_id: int, url: str) -> None:
+    _queue.put(YoutubeJob(video_id, url))
