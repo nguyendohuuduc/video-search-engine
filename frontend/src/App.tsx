@@ -71,36 +71,44 @@ function App() {
     : []
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="mb-1 text-2xl font-semibold text-gray-900">Video Search</h1>
-      <p className="mb-6 text-gray-500">Search your videos by what's said or what's on screen.</p>
+    <div className="min-h-screen bg-[#f7f7f8]">
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <header className="mb-8 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900">
+            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-white">
+              <path d="M4 6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Z" stroke="currentColor" strokeWidth="1.6" />
+              <path d="m16 10 4-2v8l-4-2" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold leading-tight text-gray-900">Video Search</h1>
+            <p className="text-sm text-gray-500">Search by what's said or what's on screen</p>
+          </div>
+        </header>
 
-      <UploadPanel onUploaded={refreshVideos} />
+        <div className="flex flex-col gap-4">
+          <UploadPanel onUploaded={refreshVideos} />
 
-      <div className="mt-4">
-        <VideoLibrary videos={videos} onSelect={handleSelectVideo} />
-      </div>
+          <VideoLibrary videos={videos} onSelect={handleSelectVideo} />
 
-      <div className="mt-8">
-        <SearchBar onSearch={handleSearch} loading={loading} />
-      </div>
+          <SearchBar onSearch={handleSearch} loading={loading} />
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          )}
 
-      {selection && (
-        <div className="mt-6">
-          <VideoPlayer
-            videoId={selection.videoId}
-            videoTitle={selection.videoTitle}
-            videoUrl={selection.videoUrl}
-            seekTo={selection.timestamp}
-            markers={markersForSelectedVideo}
-          />
+          {selection && (
+            <VideoPlayer
+              videoId={selection.videoId}
+              videoTitle={selection.videoTitle}
+              videoUrl={selection.videoUrl}
+              seekTo={selection.timestamp}
+              markers={markersForSelectedVideo}
+            />
+          )}
+
+          <ResultsList results={results} hasSearched={hasSearched} onSelect={handleSelectResult} />
         </div>
-      )}
-
-      <div className="mt-6">
-        <ResultsList results={results} hasSearched={hasSearched} onSelect={handleSelectResult} />
       </div>
     </div>
   )

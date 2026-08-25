@@ -18,33 +18,33 @@ export function ResultCard({ result, onSelect }: ResultCardProps) {
     <button
       type="button"
       onClick={() => onSelect(result)}
-      className="flex w-full gap-3 rounded-lg border border-gray-200 p-3 text-left hover:border-purple-300"
+      className="flex w-full gap-3 rounded-xl bg-white p-2.5 text-left shadow-sm ring-1 ring-gray-100 hover:ring-gray-300"
     >
-      <div className="h-20 w-32 flex-shrink-0 overflow-hidden rounded bg-gray-100">
+      <div className="h-16 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
         {thumbnail_url ? (
           <img src={thumbnail_url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-gray-400">no thumbnail</div>
+          <div className="flex h-full items-center justify-center text-[11px] text-gray-400">no thumbnail</div>
         )}
       </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="min-w-0 flex-1 py-0.5">
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <span className="truncate font-medium text-gray-900">{video_title}</span>
           <span>·</span>
-          <span>{formatTimestamp(timestamp)}</span>
+          <span className="flex-shrink-0">{formatTimestamp(timestamp)}</span>
           <span
             className={
-              "rounded px-1.5 py-0.5 text-xs font-medium " +
-              (match_type === "frame" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700")
+              "flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
+              (match_type === "frame" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600")
             }
           >
             {match_type === "frame" ? "seen" : "said"}
           </span>
-          <span className="ml-auto text-xs text-gray-400">score {score.toFixed(2)}</span>
+          <span className="ml-auto flex-shrink-0 tabular-nums">{Math.round(score * 100)}%</span>
         </div>
 
-        {snippet && <p className="mt-1 truncate text-sm text-gray-600">"{snippet}"</p>}
+        {snippet && <p className="mt-1.5 truncate text-sm text-gray-600">"{snippet}"</p>}
       </div>
     </button>
   )

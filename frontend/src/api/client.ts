@@ -26,7 +26,17 @@ export interface Video {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
   if (!res.ok) {
-    throw new Error(`${init?.method ?? "GET"} ${path} failed: ${res.status} ${res.statusText}`)
+    // FastAPI error responses carry the actual reason in a JSON `detail`
+    // field - fall back to the raw status if the body isn't JSON/doesn't
+    // have one, so this never throws while trying to build the message.
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const body = await res.json()
+      if (body?.detail) detail = body.detail
+    } catch {
+      // response wasn't JSON - keep the status-based message above
+    }
+    throw new Error(detail)
   }
   return res.json() as Promise<T>
 }

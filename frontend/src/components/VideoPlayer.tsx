@@ -50,20 +50,20 @@ export function VideoPlayer({ videoId, videoTitle, videoUrl, seekTo, markers }: 
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
-      <p className="mb-2 truncate text-sm font-medium text-gray-900">{videoTitle}</p>
+    <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-100">
+      <p className="mb-2 truncate px-0.5 text-sm font-medium text-gray-900">{videoTitle}</p>
 
       <video
         ref={videoRef}
         src={videoUrl}
         controls
         onLoadedMetadata={handleLoadedMetadata}
-        className="w-full rounded bg-black"
+        className="w-full rounded-lg bg-black"
       />
 
       {duration > 0 && (
-        <div className="relative mt-2 h-4">
-          <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded bg-gray-200" />
+        <div className="relative mt-3 h-4">
+          <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-gray-100" />
           {markers.map((marker, i) => (
             <button
               key={i}
@@ -72,7 +72,7 @@ export function VideoPlayer({ videoId, videoTitle, videoUrl, seekTo, markers }: 
               onClick={() => handleMarkerClick(marker.timestamp)}
               style={{ left: `${(marker.timestamp / duration) * 100}%` }}
               className={
-                "absolute top-1/2 h-3 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-sm " +
+                "absolute top-1/2 h-3 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white hover:scale-125 " +
                 (marker.matchType === "frame" ? "bg-blue-500" : "bg-green-500")
               }
             />

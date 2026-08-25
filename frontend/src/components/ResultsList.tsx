@@ -13,7 +13,7 @@ export function ResultsList({ results, hasSearched, onSelect }: ResultsListProps
   }
 
   if (results.length === 0) {
-    return <p className="text-gray-500">No results.</p>
+    return <p className="px-1 text-sm text-gray-400">No results.</p>
   }
 
   return (
