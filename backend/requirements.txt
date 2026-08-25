@@ -1,0 +1,12 @@
+# torch is installed separately (CPU-only wheel) before this file:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+fastapi
+uvicorn[standard]
+python-multipart
+faster-whisper
+open_clip_torch
+sentence-transformers
+psycopg[binary,pool]
+pgvector
+imageio-ffmpeg
+numpy
