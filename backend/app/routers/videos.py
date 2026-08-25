@@ -15,11 +15,15 @@ def _row_to_dict(row) -> dict:
     return {
         "video_id": row[0],
         "original_name": row[1],
+        "video_url": f"/media/videos/{row[6]}",
         "duration_sec": row[2],
         "status": row[3],
         "error": row[4],
         "created_at": row[5].isoformat(),
     }
+
+
+_SELECT_COLUMNS = "id, original_name, duration_sec, status, error, created_at, filename"
 
 
 @router.post("")
@@ -38,9 +42,7 @@ async def upload_video(file: UploadFile = File(...)):
 @router.get("")
 def list_videos():
     with pool.connection() as conn:
-        rows = conn.execute(
-            "SELECT id, original_name, duration_sec, status, error, created_at FROM videos ORDER BY id DESC"
-        ).fetchall()
+        rows = conn.execute(f"SELECT {_SELECT_COLUMNS} FROM videos ORDER BY id DESC").fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
@@ -48,7 +50,7 @@ def list_videos():
 def get_video(video_id: int):
     with pool.connection() as conn:
         row = conn.execute(
-            "SELECT id, original_name, duration_sec, status, error, created_at FROM videos WHERE id = %s",
+            f"SELECT {_SELECT_COLUMNS} FROM videos WHERE id = %s",
             (video_id,),
         ).fetchone()
 

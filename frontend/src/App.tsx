@@ -1,7 +1,9 @@
-import { useState } from "react"
-import { searchVideos, type SearchResult } from "./api/client"
+import { useEffect, useState } from "react"
+import { listVideos, searchVideos, type SearchResult, type Video } from "./api/client"
 import { ResultsList } from "./components/ResultsList"
 import { SearchBar } from "./components/SearchBar"
+import { UploadPanel } from "./components/UploadPanel"
+import { VideoLibrary } from "./components/VideoLibrary"
 import { VideoPlayer } from "./components/VideoPlayer"
 
 interface Selection {
@@ -17,6 +19,18 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
+  const [videos, setVideos] = useState<Video[]>([])
+
+  function refreshVideos() {
+    listVideos()
+      .then(setVideos)
+      .catch(() => {
+        // Library refresh failing silently is acceptable here - it's a
+        // secondary view, not the primary search flow.
+      })
+  }
+
+  useEffect(refreshVideos, [])
 
   async function handleSearch(query: string) {
     setLoading(true)
@@ -41,6 +55,15 @@ function App() {
     })
   }
 
+  function handleSelectVideo(video: Video) {
+    setSelection({
+      videoId: video.video_id,
+      videoTitle: video.original_name,
+      videoUrl: video.video_url,
+      timestamp: 0,
+    })
+  }
+
   const markersForSelectedVideo = selection
     ? results
         .filter((r) => r.video_id === selection.videoId)
@@ -52,7 +75,15 @@ function App() {
       <h1 className="mb-1 text-2xl font-semibold text-gray-900">Video Search</h1>
       <p className="mb-6 text-gray-500">Search your videos by what's said or what's on screen.</p>
 
-      <SearchBar onSearch={handleSearch} loading={loading} />
+      <UploadPanel onUploaded={refreshVideos} />
+
+      <div className="mt-4">
+        <VideoLibrary videos={videos} onSelect={handleSelectVideo} />
+      </div>
+
+      <div className="mt-8">
+        <SearchBar onSearch={handleSearch} loading={loading} />
+      </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 

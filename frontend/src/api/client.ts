@@ -16,6 +16,7 @@ export type VideoStatus = "pending" | "processing" | "ready" | "failed"
 export interface Video {
   video_id: number
   original_name: string
+  video_url: string
   duration_sec: number | null
   status: VideoStatus
   error: string | null
