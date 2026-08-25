@@ -21,6 +21,11 @@ def get_whisper_model() -> WhisperModel:
     return _model
 
 
+def warmup() -> None:
+    """Forces the model to load now rather than on first use."""
+    get_whisper_model()
+
+
 @dataclass
 class TranscriptChunk:
     text: str

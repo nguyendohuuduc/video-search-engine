@@ -23,3 +23,8 @@ def embed_texts(texts: list[str]) -> list[np.ndarray]:
     model = _load()
     vecs = model.encode(texts, normalize_embeddings=True)
     return list(vecs)
+
+
+def warmup() -> None:
+    """Forces the model to load now rather than on first use."""
+    _load()

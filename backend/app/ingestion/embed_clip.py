@@ -53,3 +53,8 @@ def embed_text(text: str) -> np.ndarray:
     with torch.no_grad():
         features = model.encode_text(tokens)
     return _normalize(features.squeeze(0).numpy())
+
+
+def warmup() -> None:
+    """Forces the model to load now rather than on first use."""
+    _load()

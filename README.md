@@ -19,7 +19,8 @@ at personal-library scale).
 
 - [x] **Phase 1** — ingestion pipeline (frame extraction, transcription, both embeddings,
       Postgres storage), validated against real video
-- [ ] **Phase 2** — FastAPI backend (upload/search endpoints, background job worker)
+- [x] **Phase 2** — FastAPI backend (upload/search endpoints, background job worker),
+      validated end-to-end against real requests
 - [ ] **Phase 3** — React frontend
 - [ ] **Phase 4** — video player with match-highlighting timeline
 - [ ] **Phase 5** — upload UI, video library view
@@ -59,7 +60,18 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 nvm install 20 && nvm use 20
 ```
 
-## Usage (current — CLI only, no server yet)
+## Running the server
+
+```bash
+cd backend
+.venv/bin/python -m uvicorn app.main:app --reload
+```
+
+Swagger UI at `http://127.0.0.1:8000/docs` — upload a video, poll its status, run searches,
+all without a frontend. Endpoints: `POST /api/videos` (upload), `GET /api/videos`,
+`GET /api/videos/{id}` (status), `POST /api/search`.
+
+## Usage (CLI, useful for one-off ingestion/testing without the server)
 
 Ingest a single video, or every video in a folder:
 

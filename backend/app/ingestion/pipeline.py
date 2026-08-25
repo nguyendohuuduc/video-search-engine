@@ -9,28 +9,49 @@ from app.ingestion.frames import extract_frames, get_video_duration
 from app.ingestion.transcribe import transcribe_video
 
 
-def ingest_video_file(source_path: Path, original_name: str | None = None) -> int:
-    """Runs the full ingestion pipeline for a single video file and returns its video_id.
-
-    Intended to be called either from the CLI test script or from the background
-    job worker once the FastAPI upload endpoint exists.
+def create_video_record(source_path: Path, original_name: str | None = None) -> int:
+    """Registers a video and copies it into storage. Fast (no ML work) — safe to
+    call inline from a request handler. Actual processing happens separately via
+    process_video(), meant to run on the background worker.
     """
     original_name = original_name or source_path.name
     conn = get_connection()
-
-    row = conn.execute(
-        "INSERT INTO videos (filename, original_name, status) VALUES (%s, %s, 'pending') RETURNING id",
-        (source_path.name, original_name),
-    ).fetchone()
-    video_id = row[0]
-
     try:
-        conn.execute("UPDATE videos SET status = 'processing' WHERE id = %s", (video_id,))
+        # Insert first to get the id, then rename to the id-prefixed filename that
+        # actually gets written to disk — process_video() looks the file up later
+        # by re-reading this same `filename` column, so it must match reality.
+        row = conn.execute(
+            "INSERT INTO videos (filename, original_name, status) VALUES (%s, %s, 'pending') RETURNING id",
+            (source_path.name, original_name),
+        ).fetchone()
+        video_id = row[0]
 
-        stored_path = VIDEOS_DIR / f"{video_id}_{source_path.name}"
+        stored_filename = f"{video_id}_{source_path.name}"
+        stored_path = VIDEOS_DIR / stored_filename
         if stored_path != source_path:
             VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source_path, stored_path)
+
+        conn.execute("UPDATE videos SET filename = %s WHERE id = %s", (stored_filename, video_id))
+    finally:
+        conn.close()
+
+    return video_id
+
+
+def process_video(video_id: int) -> None:
+    """Runs the slow ingestion work (frame extraction, transcription, both sets of
+    embeddings) for an already-registered video. Meant to run on the background
+    worker thread, not inline with a request.
+    """
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT filename FROM videos WHERE id = %s", (video_id,)).fetchone()
+        if row is None:
+            raise ValueError(f"No video with id={video_id}")
+        stored_path = VIDEOS_DIR / row[0]
+
+        conn.execute("UPDATE videos SET status = 'processing' WHERE id = %s", (video_id,))
 
         t0 = time.time()
         duration = get_video_duration(stored_path)
@@ -87,4 +108,9 @@ def ingest_video_file(source_path: Path, original_name: str | None = None) -> in
     finally:
         conn.close()
 
+
+def ingest_video_file(source_path: Path, original_name: str | None = None) -> int:
+    """Convenience wrapper for the CLI: register + process in one blocking call."""
+    video_id = create_video_record(source_path, original_name)
+    process_video(video_id)
     return video_id

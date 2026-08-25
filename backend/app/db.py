@@ -1,5 +1,6 @@
 import psycopg
 from pgvector.psycopg import register_vector
+from psycopg_pool import ConnectionPool
 
 from app.config import DATABASE_URL
 
@@ -39,6 +40,9 @@ CREATE INDEX IF NOT EXISTS segments_video_id_idx ON segments(video_id);
 
 
 def get_connection() -> psycopg.Connection:
+    """A single ad hoc connection — used by the CLI and the background worker,
+    where one-connection-per-call is simple and fine (no concurrent request load).
+    """
     conn = psycopg.connect(DATABASE_URL, autocommit=True)
     register_vector(conn)
     return conn
@@ -47,3 +51,13 @@ def get_connection() -> psycopg.Connection:
 def init_schema() -> None:
     with get_connection() as conn:
         conn.execute(SCHEMA)
+
+
+def _configure_pooled_connection(conn: psycopg.Connection) -> None:
+    register_vector(conn)
+    conn.autocommit = True
+
+
+# Used by the FastAPI app, where many request handlers may need a connection
+# concurrently — opened/closed once in main.py's lifespan, not per-request.
+pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=5, configure=_configure_pooled_connection, open=False)
