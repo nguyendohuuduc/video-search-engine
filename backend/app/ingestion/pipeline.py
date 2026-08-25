@@ -1,0 +1,90 @@
+import shutil
+import time
+from pathlib import Path
+
+from app.config import FRAMES_DIR, VIDEOS_DIR
+from app.db import get_connection
+from app.ingestion import embed_clip, embed_text
+from app.ingestion.frames import extract_frames, get_video_duration
+from app.ingestion.transcribe import transcribe_video
+
+
+def ingest_video_file(source_path: Path, original_name: str | None = None) -> int:
+    """Runs the full ingestion pipeline for a single video file and returns its video_id.
+
+    Intended to be called either from the CLI test script or from the background
+    job worker once the FastAPI upload endpoint exists.
+    """
+    original_name = original_name or source_path.name
+    conn = get_connection()
+
+    row = conn.execute(
+        "INSERT INTO videos (filename, original_name, status) VALUES (%s, %s, 'pending') RETURNING id",
+        (source_path.name, original_name),
+    ).fetchone()
+    video_id = row[0]
+
+    try:
+        conn.execute("UPDATE videos SET status = 'processing' WHERE id = %s", (video_id,))
+
+        stored_path = VIDEOS_DIR / f"{video_id}_{source_path.name}"
+        if stored_path != source_path:
+            VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path, stored_path)
+
+        t0 = time.time()
+        duration = get_video_duration(stored_path)
+        print(f"[video {video_id}] duration={duration:.1f}s")
+
+        frames_dir = FRAMES_DIR / str(video_id)
+        frames = extract_frames(stored_path, frames_dir)
+        print(f"[video {video_id}] extracted {len(frames)} frames in {time.time() - t0:.1f}s")
+
+        t1 = time.time()
+        frame_vecs = embed_clip.embed_images([f.path for f in frames])
+        print(f"[video {video_id}] embedded {len(frame_vecs)} frames in {time.time() - t1:.1f}s")
+
+        for frame, vec in zip(frames, frame_vecs):
+            rel_path = str(frame.path.relative_to(FRAMES_DIR.parent))
+            conn.execute(
+                """
+                INSERT INTO segments (video_id, type, start_time, end_time, frame_path, frame_embedding)
+                VALUES (%s, 'frame', %s, %s, %s, %s)
+                """,
+                (video_id, frame.timestamp, frame.timestamp, rel_path, vec),
+            )
+
+        t2 = time.time()
+        chunks = transcribe_video(stored_path)
+        print(f"[video {video_id}] transcribed {len(chunks)} chunks in {time.time() - t2:.1f}s")
+
+        if chunks:
+            t3 = time.time()
+            text_vecs = embed_text.embed_texts([c.text for c in chunks])
+            print(f"[video {video_id}] embedded {len(text_vecs)} transcript chunks in {time.time() - t3:.1f}s")
+
+            for chunk, vec in zip(chunks, text_vecs):
+                conn.execute(
+                    """
+                    INSERT INTO segments (video_id, type, start_time, end_time, text, transcript_embedding)
+                    VALUES (%s, 'transcript', %s, %s, %s, %s)
+                    """,
+                    (video_id, chunk.start_time, chunk.end_time, chunk.text, vec),
+                )
+
+        conn.execute(
+            "UPDATE videos SET status = 'ready', duration_sec = %s WHERE id = %s",
+            (duration, video_id),
+        )
+        print(f"[video {video_id}] done in {time.time() - t0:.1f}s total")
+
+    except Exception as e:
+        conn.execute(
+            "UPDATE videos SET status = 'failed', error = %s WHERE id = %s",
+            (str(e), video_id),
+        )
+        raise
+    finally:
+        conn.close()
+
+    return video_id
