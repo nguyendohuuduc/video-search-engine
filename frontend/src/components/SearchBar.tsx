@@ -10,6 +10,11 @@ export function SearchBar({ onSearch, loading }: SearchBarProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    // A disabled submit button doesn't block Enter-key submission of the
+    // form, so this guard is what actually prevents firing a second search
+    // while one is still in flight (App.tsx also guards against the race
+    // this would otherwise cause, but not starting it is better still).
+    if (loading) return
     const trimmed = query.trim()
     if (trimmed) {
       onSearch(trimmed)

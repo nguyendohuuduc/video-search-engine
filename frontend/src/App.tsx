@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { listVideos, searchVideos, type SearchResult, type Video } from "./api/client"
 import { ResultsList } from "./components/ResultsList"
 import { SearchBar } from "./components/SearchBar"
@@ -20,6 +20,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
   const [videos, setVideos] = useState<Video[]>([])
+  const searchRequestId = useRef(0)
 
   function refreshVideos() {
     listVideos()
@@ -33,16 +34,22 @@ function App() {
   useEffect(refreshVideos, [])
 
   async function handleSearch(query: string) {
+    // Guards against out-of-order responses: if a newer search starts before
+    // an older one's response arrives, the older one must not be allowed to
+    // overwrite the newer results when it finally resolves.
+    const requestId = ++searchRequestId.current
     setLoading(true)
     setError(null)
     try {
       const data = await searchVideos(query)
+      if (requestId !== searchRequestId.current) return
       setResults(data)
       setHasSearched(true)
     } catch (e) {
+      if (requestId !== searchRequestId.current) return
       setError(e instanceof Error ? e.message : "Search failed")
     } finally {
-      setLoading(false)
+      if (requestId === searchRequestId.current) setLoading(false)
     }
   }
 
