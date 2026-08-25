@@ -22,8 +22,10 @@ at personal-library scale).
 - [x] **Phase 2** — FastAPI backend (upload/search endpoints, background job worker),
       validated end-to-end against real requests
 - [ ] **Phase 3** — React frontend
-- [ ] **Phase 4** — video player with match-highlighting timeline
-- [ ] **Phase 5** — upload UI, video library view
+- [x] **Phase 4** — video player with marker-strip timeline, click-to-seek from
+      results and markers, validated end-to-end in a browser
+- [x] **Phase 5** — upload UI with status polling, video library view, validated
+      end-to-end in a browser
 - [ ] **Phase 6** — polish
 
 ## Setup
