@@ -1,4 +1,5 @@
 import type { SearchResult } from "../api/client"
+import { playerColor } from "../playerColors"
 
 function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -9,16 +10,21 @@ function formatTimestamp(seconds: number): string {
 interface ResultCardProps {
   result: SearchResult
   onSelect: (result: SearchResult) => void
+  openColorIndex?: number // set if this result is currently open as a player - ties the two together visually
 }
 
-export function ResultCard({ result, onSelect }: ResultCardProps) {
+export function ResultCard({ result, onSelect, openColorIndex }: ResultCardProps) {
   const { video_title, timestamp, match_type, score, snippet, thumbnail_url } = result
+  const color = openColorIndex != null ? playerColor(openColorIndex) : null
 
   return (
     <button
       type="button"
       onClick={() => onSelect(result)}
-      className="flex w-full gap-3 rounded-xl bg-white p-2.5 text-left shadow-sm ring-1 ring-gray-100 hover:ring-gray-300"
+      className={
+        "flex w-full gap-3 rounded-xl bg-white p-2.5 text-left shadow-sm " +
+        (color ? `ring-2 ${color.ring}` : "ring-1 ring-gray-100 hover:ring-gray-300")
+      }
     >
       <div className="h-16 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
         {thumbnail_url ? (
@@ -30,6 +36,7 @@ export function ResultCard({ result, onSelect }: ResultCardProps) {
 
       <div className="min-w-0 flex-1 py-0.5">
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          {color && <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${color.dot}`} />}
           <span className="truncate font-medium text-gray-900">{video_title}</span>
           <span>·</span>
           <span className="flex-shrink-0">{formatTimestamp(timestamp)}</span>

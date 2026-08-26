@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { playerColor } from "../playerColors"
 
 interface VideoPlayerProps {
   videoTitle: string
@@ -6,10 +7,12 @@ interface VideoPlayerProps {
   seekTo: number
   stopAt: number
   trigger: number // bumped on every open/re-open, even for the same seekTo/stopAt, to force a re-seek
+  colorIndex: number // ties this player visually to the result card that opened it
   onClose: () => void
 }
 
-export function VideoPlayer({ videoTitle, videoUrl, seekTo, stopAt, trigger, onClose }: VideoPlayerProps) {
+export function VideoPlayer({ videoTitle, videoUrl, seekTo, stopAt, trigger, colorIndex, onClose }: VideoPlayerProps) {
+  const color = playerColor(colorIndex)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [ready, setReady] = useState(false)
 
@@ -38,9 +41,12 @@ export function VideoPlayer({ videoTitle, videoUrl, seekTo, stopAt, trigger, onC
   }
 
   return (
-    <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-100">
+    <div className={`rounded-xl border-l-4 bg-white p-3 shadow-sm ring-1 ring-gray-100 ${color.border}`}>
       <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
-        <p className="truncate text-sm font-medium text-gray-900">{videoTitle}</p>
+        <p className="flex min-w-0 items-center gap-2 truncate text-sm font-medium text-gray-900">
+          <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${color.dot}`} />
+          <span className="truncate">{videoTitle}</span>
+        </p>
         <button
           type="button"
           onClick={onClose}

@@ -9,10 +9,15 @@ import { VideoPlayer } from "./components/VideoPlayer"
 interface Selection {
   key: string // stable per distinct (video, chunk) - lets a repeat click re-trigger the same player instead of adding a duplicate
   trigger: number // bumped on every click, even a repeat one, so the player re-seeks even if timestamp/stopAt didn't change
+  colorIndex: number // ties this player visually to the result card that opened it
   videoTitle: string
   videoUrl: string
   timestamp: number
   stopAt: number
+}
+
+function resultKey(result: SearchResult): string {
+  return `${result.video_id}-${result.match_type}-${result.timestamp}`
 }
 
 // Frame matches are a single instant (no natural duration), so give them a
@@ -40,6 +45,18 @@ function App() {
   const [videos, setVideos] = useState<Video[]>([])
   const searchRequestId = useRef(0)
   const selectionCounter = useRef(0)
+  // Assigns each distinct chunk key a color once and remembers it for the
+  // rest of the session (even after closing/reopening) - a player's color
+  // should never shift around just because other players opened or closed.
+  const colorAssignments = useRef(new Map<string, number>())
+  const nextColorIndex = useRef(0)
+
+  function colorIndexFor(key: string): number {
+    if (!colorAssignments.current.has(key)) {
+      colorAssignments.current.set(key, nextColorIndex.current++)
+    }
+    return colorAssignments.current.get(key)!
+  }
 
   function refreshVideos() {
     listVideos()
@@ -76,9 +93,9 @@ function App() {
   // Opens a new player for this (key), or - if one's already open for the
   // exact same chunk - just re-triggers it in place rather than stacking a
   // duplicate.
-  function openPlayer(entry: Omit<Selection, "trigger">) {
+  function openPlayer(entry: Omit<Selection, "trigger" | "colorIndex">) {
     setSelections((prev) => {
-      const next: Selection = { ...entry, trigger: ++selectionCounter.current }
+      const next: Selection = { ...entry, trigger: ++selectionCounter.current, colorIndex: colorIndexFor(entry.key) }
       const existingIndex = prev.findIndex((s) => s.key === entry.key)
       if (existingIndex === -1) return [...prev, next]
       const copy = [...prev]
@@ -90,12 +107,16 @@ function App() {
   function handleSelectResult(result: SearchResult) {
     const { start, stop } = getPlaybackWindow(result)
     openPlayer({
-      key: `${result.video_id}-${result.match_type}-${result.timestamp}`,
+      key: resultKey(result),
       videoTitle: result.video_title,
       videoUrl: result.video_url,
       timestamp: start,
       stopAt: stop,
     })
+  }
+
+  function getOpenColorIndex(result: SearchResult): number | undefined {
+    return selections.find((s) => s.key === resultKey(result))?.colorIndex
   }
 
   function handleSelectVideo(video: Video) {
@@ -147,8 +168,10 @@ function App() {
 
         {/* Two-column split starts here, at the search bar, so the player
             column lines up with the thing that's producing the results -
-            not with the upload/library section above it. */}
-        <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+            not with the upload/library section above it. Breakpoint is
+            md: (768px) rather than lg: (1024px) so this actually kicks in
+            on more real window sizes instead of silently staying stacked. */}
+        <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <SearchBar onSearch={handleSearch} loading={loading} />
 
@@ -156,11 +179,16 @@ function App() {
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
             )}
 
-            <ResultsList results={results} hasSearched={hasSearched} onSelect={handleSelectResult} />
+            <ResultsList
+              results={results}
+              hasSearched={hasSearched}
+              onSelect={handleSelectResult}
+              getOpenColorIndex={getOpenColorIndex}
+            />
           </div>
 
           {selections.length > 0 && (
-            <div className="flex flex-col gap-4 lg:sticky lg:top-12 lg:w-[420px] lg:flex-shrink-0">
+            <div className="flex flex-col gap-4 md:sticky md:top-12 md:w-[360px] md:flex-shrink-0">
               {selections.map((s) => (
                 <VideoPlayer
                   key={s.key}
@@ -169,6 +197,7 @@ function App() {
                   seekTo={s.timestamp}
                   stopAt={s.stopAt}
                   trigger={s.trigger}
+                  colorIndex={s.colorIndex}
                   onClose={() => handleClosePlayer(s.key)}
                 />
               ))}

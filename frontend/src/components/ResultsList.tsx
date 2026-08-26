@@ -5,9 +5,10 @@ interface ResultsListProps {
   results: SearchResult[]
   hasSearched: boolean
   onSelect: (result: SearchResult) => void
+  getOpenColorIndex: (result: SearchResult) => number | undefined
 }
 
-export function ResultsList({ results, hasSearched, onSelect }: ResultsListProps) {
+export function ResultsList({ results, hasSearched, onSelect, getOpenColorIndex }: ResultsListProps) {
   if (!hasSearched) {
     return null
   }
@@ -23,6 +24,7 @@ export function ResultsList({ results, hasSearched, onSelect }: ResultsListProps
           key={`${result.video_id}-${result.match_type}-${result.timestamp}-${i}`}
           result={result}
           onSelect={onSelect}
+          openColorIndex={getOpenColorIndex(result)}
         />
       ))}
     </div>
