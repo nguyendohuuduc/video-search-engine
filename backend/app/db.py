@@ -29,11 +29,16 @@ CREATE TABLE IF NOT EXISTS segments (
     transcript_embedding vector(384)
 );
 
+ALTER TABLE segments ADD COLUMN IF NOT EXISTS text_tsv tsvector
+    GENERATED ALWAYS AS (to_tsvector('english', coalesce(text, ''))) STORED;
+
 CREATE INDEX IF NOT EXISTS segments_frame_embedding_idx ON segments
     USING hnsw (frame_embedding vector_cosine_ops) WHERE frame_embedding IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS segments_transcript_embedding_idx ON segments
     USING hnsw (transcript_embedding vector_cosine_ops) WHERE transcript_embedding IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS segments_text_tsv_idx ON segments USING gin(text_tsv);
 
 CREATE INDEX IF NOT EXISTS segments_video_id_idx ON segments(video_id);
 """
