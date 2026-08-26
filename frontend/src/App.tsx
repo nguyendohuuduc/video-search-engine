@@ -139,12 +139,17 @@ function App() {
           </div>
         </header>
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-4">
+          <UploadPanel onUploaded={refreshVideos} />
+
+          <VideoLibrary videos={videos} onSelect={handleSelectVideo} onDelete={handleDeleteVideo} />
+        </div>
+
+        {/* Two-column split starts here, at the search bar, so the player
+            column lines up with the thing that's producing the results -
+            not with the upload/library section above it. */}
+        <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <UploadPanel onUploaded={refreshVideos} />
-
-            <VideoLibrary videos={videos} onSelect={handleSelectVideo} onDelete={handleDeleteVideo} />
-
             <SearchBar onSearch={handleSearch} loading={loading} />
 
             {error && (
