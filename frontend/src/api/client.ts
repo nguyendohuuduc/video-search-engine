@@ -38,6 +38,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new Error(detail)
   }
+  if (res.status === 204) {
+    return undefined as T
+  }
   return res.json() as Promise<T>
 }
 
@@ -69,4 +72,8 @@ export function uploadVideoFromYoutube(url: string): Promise<{ video_id: number;
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),
   })
+}
+
+export function deleteVideo(videoId: number): Promise<void> {
+  return request(`/api/videos/${videoId}`, { method: "DELETE" })
 }

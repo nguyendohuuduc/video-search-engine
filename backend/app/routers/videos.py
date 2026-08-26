@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from app.config import FRAMES_DIR, VIDEOS_DIR
 from app.db import pool
 from app.ingestion import jobs
 from app.ingestion.pipeline import create_video_record, create_video_record_from_url
@@ -74,3 +75,19 @@ def get_video(video_id: int):
         raise HTTPException(status_code=404, detail="Video not found")
 
     return _row_to_dict(row)
+
+
+@router.delete("/{video_id}", status_code=204)
+def delete_video(video_id: int):
+    with pool.connection() as conn:
+        row = conn.execute("SELECT filename FROM videos WHERE id = %s", (video_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        # segments rows cascade automatically via the FK's ON DELETE CASCADE
+        conn.execute("DELETE FROM videos WHERE id = %s", (video_id,))
+
+    filename = row[0]
+    if filename:
+        (VIDEOS_DIR / filename).unlink(missing_ok=True)
+    shutil.rmtree(FRAMES_DIR / str(video_id), ignore_errors=True)

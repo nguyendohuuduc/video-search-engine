@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { listVideos, searchVideos, type SearchResult, type Video } from "./api/client"
+import { deleteVideo, listVideos, searchVideos, type SearchResult, type Video } from "./api/client"
 import { ResultsList } from "./components/ResultsList"
 import { SearchBar } from "./components/SearchBar"
 import { UploadPanel } from "./components/UploadPanel"
@@ -71,6 +71,17 @@ function App() {
     })
   }
 
+  async function handleDeleteVideo(video: Video) {
+    try {
+      await deleteVideo(video.video_id)
+      refreshVideos()
+      setResults((prev) => prev.filter((r) => r.video_id !== video.video_id))
+      setSelection((prev) => (prev?.videoId === video.video_id ? null : prev))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed")
+    }
+  }
+
   const markersForSelectedVideo = selection
     ? results
         .filter((r) => r.video_id === selection.videoId)
@@ -96,7 +107,7 @@ function App() {
         <div className="flex flex-col gap-4">
           <UploadPanel onUploaded={refreshVideos} />
 
-          <VideoLibrary videos={videos} onSelect={handleSelectVideo} />
+          <VideoLibrary videos={videos} onSelect={handleSelectVideo} onDelete={handleDeleteVideo} />
 
           <SearchBar onSearch={handleSearch} loading={loading} />
 
