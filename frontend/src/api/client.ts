@@ -5,6 +5,7 @@ export interface SearchResult {
   video_title: string
   video_url: string
   timestamp: number
+  end_timestamp: number
   match_type: MatchType
   score: number
   snippet: string | null

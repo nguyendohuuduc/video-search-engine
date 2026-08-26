@@ -9,7 +9,7 @@ RRF_K = 60  # standard damping constant - keeps rank-1 vs rank-2 from being too 
 def _search_frames(conn, qvec: np.ndarray, k: int) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT s.id, s.video_id, s.start_time, s.frame_path, v.original_name, v.filename
+        SELECT s.id, s.video_id, s.start_time, s.end_time, s.frame_path, v.original_name, v.filename
         FROM segments s JOIN videos v ON v.id = s.video_id
         WHERE s.frame_embedding IS NOT NULL
         ORDER BY s.frame_embedding <=> %(qvec)s
@@ -24,18 +24,19 @@ def _search_frames(conn, qvec: np.ndarray, k: int) -> list[dict]:
             "video_title": title,
             "video_url": f"/media/videos/{filename}",
             "timestamp": start_time,
+            "end_timestamp": end_time,
             "match_type": "frame",
             "snippet": None,
             "thumbnail_path": frame_path,
         }
-        for seg_id, video_id, start_time, frame_path, title, filename in rows
+        for seg_id, video_id, start_time, end_time, frame_path, title, filename in rows
     ]
 
 
 def _search_transcripts_semantic(conn, qvec: np.ndarray, k: int) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT s.id, s.video_id, s.start_time, s.text, v.original_name, v.filename
+        SELECT s.id, s.video_id, s.start_time, s.end_time, s.text, v.original_name, v.filename
         FROM segments s JOIN videos v ON v.id = s.video_id
         WHERE s.transcript_embedding IS NOT NULL
         ORDER BY s.transcript_embedding <=> %(qvec)s
@@ -50,11 +51,12 @@ def _search_transcripts_semantic(conn, qvec: np.ndarray, k: int) -> list[dict]:
             "video_title": title,
             "video_url": f"/media/videos/{filename}",
             "timestamp": start_time,
+            "end_timestamp": end_time,
             "match_type": "transcript",
             "snippet": text,
             "thumbnail_path": None,
         }
-        for seg_id, video_id, start_time, text, title, filename in rows
+        for seg_id, video_id, start_time, end_time, text, title, filename in rows
     ]
 
 
@@ -66,7 +68,7 @@ def _search_transcripts_lexical(conn, query: str, k: int) -> list[dict]:
     """
     rows = conn.execute(
         """
-        SELECT s.id, s.video_id, s.start_time, s.text, v.original_name, v.filename
+        SELECT s.id, s.video_id, s.start_time, s.end_time, s.text, v.original_name, v.filename
         FROM segments s JOIN videos v ON v.id = s.video_id
         WHERE s.text_tsv @@ websearch_to_tsquery('english', %(query)s)
         ORDER BY ts_rank(s.text_tsv, websearch_to_tsquery('english', %(query)s)) DESC
@@ -81,11 +83,12 @@ def _search_transcripts_lexical(conn, query: str, k: int) -> list[dict]:
             "video_title": title,
             "video_url": f"/media/videos/{filename}",
             "timestamp": start_time,
+            "end_timestamp": end_time,
             "match_type": "transcript",
             "snippet": text,
             "thumbnail_path": None,
         }
-        for seg_id, video_id, start_time, text, title, filename in rows
+        for seg_id, video_id, start_time, end_time, text, title, filename in rows
     ]
 
 

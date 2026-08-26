@@ -11,6 +11,23 @@ interface Selection {
   videoTitle: string
   videoUrl: string
   timestamp: number
+  stopAt: number
+}
+
+// Frame matches are a single instant (no natural duration), so give them a
+// short window of context around the match instead of a frozen moment.
+// Transcript matches already have a real chunk span in the DB - use it as-is.
+const FRAME_CLIP_PADDING_BEFORE_SEC = 1
+const FRAME_CLIP_PADDING_AFTER_SEC = 2
+
+function getPlaybackWindow(result: SearchResult): { start: number; stop: number } {
+  if (result.match_type === "frame") {
+    return {
+      start: Math.max(0, result.timestamp - FRAME_CLIP_PADDING_BEFORE_SEC),
+      stop: result.timestamp + FRAME_CLIP_PADDING_AFTER_SEC,
+    }
+  }
+  return { start: result.timestamp, stop: result.end_timestamp }
 }
 
 function App() {
@@ -55,11 +72,13 @@ function App() {
   }
 
   function handleSelectResult(result: SearchResult) {
+    const { start, stop } = getPlaybackWindow(result)
     setSelection({
       videoId: result.video_id,
       videoTitle: result.video_title,
       videoUrl: result.video_url,
-      timestamp: result.timestamp,
+      timestamp: start,
+      stopAt: stop,
     })
   }
 
@@ -69,6 +88,7 @@ function App() {
       videoTitle: video.original_name,
       videoUrl: video.video_url,
       timestamp: 0,
+      stopAt: Infinity, // browsing the library plays the whole video, not a clipped chunk
     })
   }
 
@@ -86,7 +106,10 @@ function App() {
   const markersForSelectedVideo = selection
     ? results
         .filter((r) => r.video_id === selection.videoId)
-        .map((r) => ({ timestamp: r.timestamp, matchType: r.match_type }))
+        .map((r) => {
+          const { start, stop } = getPlaybackWindow(r)
+          return { position: r.timestamp, seekTo: start, stopAt: stop, matchType: r.match_type }
+        })
     : []
 
   return (
@@ -122,6 +145,7 @@ function App() {
               videoTitle={selection.videoTitle}
               videoUrl={selection.videoUrl}
               seekTo={selection.timestamp}
+              stopAt={selection.stopAt}
               markers={markersForSelectedVideo}
             />
           )}
