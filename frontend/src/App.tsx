@@ -7,7 +7,8 @@ import { VideoLibrary } from "./components/VideoLibrary"
 import { VideoPlayer } from "./components/VideoPlayer"
 
 interface Selection {
-  videoId: number
+  key: string // stable per distinct (video, chunk) - lets a repeat click re-trigger the same player instead of adding a duplicate
+  trigger: number // bumped on every click, even a repeat one, so the player re-seeks even if timestamp/stopAt didn't change
   videoTitle: string
   videoUrl: string
   timestamp: number
@@ -35,9 +36,10 @@ function App() {
   const [hasSearched, setHasSearched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selection, setSelection] = useState<Selection | null>(null)
+  const [selections, setSelections] = useState<Selection[]>([])
   const [videos, setVideos] = useState<Video[]>([])
   const searchRequestId = useRef(0)
+  const selectionCounter = useRef(0)
 
   function refreshVideos() {
     listVideos()
@@ -57,7 +59,7 @@ function App() {
     const requestId = ++searchRequestId.current
     setLoading(true)
     setError(null)
-    setSelection(null) // a new search replaces whatever was playing, not just the results list
+    setSelections([]) // a new search replaces whatever was playing, not just the results list
     try {
       const data = await searchVideos(query)
       if (requestId !== searchRequestId.current) return
@@ -71,10 +73,24 @@ function App() {
     }
   }
 
+  // Opens a new player for this (key), or - if one's already open for the
+  // exact same chunk - just re-triggers it in place rather than stacking a
+  // duplicate.
+  function openPlayer(entry: Omit<Selection, "trigger">) {
+    setSelections((prev) => {
+      const next: Selection = { ...entry, trigger: ++selectionCounter.current }
+      const existingIndex = prev.findIndex((s) => s.key === entry.key)
+      if (existingIndex === -1) return [...prev, next]
+      const copy = [...prev]
+      copy[existingIndex] = next
+      return copy
+    })
+  }
+
   function handleSelectResult(result: SearchResult) {
     const { start, stop } = getPlaybackWindow(result)
-    setSelection({
-      videoId: result.video_id,
+    openPlayer({
+      key: `${result.video_id}-${result.match_type}-${result.timestamp}`,
       videoTitle: result.video_title,
       videoUrl: result.video_url,
       timestamp: start,
@@ -83,8 +99,8 @@ function App() {
   }
 
   function handleSelectVideo(video: Video) {
-    setSelection({
-      videoId: video.video_id,
+    openPlayer({
+      key: `${video.video_id}-full`,
       videoTitle: video.original_name,
       videoUrl: video.video_url,
       timestamp: 0,
@@ -92,25 +108,20 @@ function App() {
     })
   }
 
+  function handleClosePlayer(key: string) {
+    setSelections((prev) => prev.filter((s) => s.key !== key))
+  }
+
   async function handleDeleteVideo(video: Video) {
     try {
       await deleteVideo(video.video_id)
       refreshVideos()
       setResults((prev) => prev.filter((r) => r.video_id !== video.video_id))
-      setSelection((prev) => (prev?.videoId === video.video_id ? null : prev))
+      setSelections((prev) => prev.filter((s) => !s.key.startsWith(`${video.video_id}-`)))
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed")
     }
   }
-
-  const markersForSelectedVideo = selection
-    ? results
-        .filter((r) => r.video_id === selection.videoId)
-        .map((r) => {
-          const { start, stop } = getPlaybackWindow(r)
-          return { position: r.timestamp, seekTo: start, stopAt: stop, matchType: r.match_type }
-        })
-    : []
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
@@ -139,16 +150,17 @@ function App() {
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
           )}
 
-          {selection && (
+          {selections.map((s) => (
             <VideoPlayer
-              videoId={selection.videoId}
-              videoTitle={selection.videoTitle}
-              videoUrl={selection.videoUrl}
-              seekTo={selection.timestamp}
-              stopAt={selection.stopAt}
-              markers={markersForSelectedVideo}
+              key={s.key}
+              videoTitle={s.videoTitle}
+              videoUrl={s.videoUrl}
+              seekTo={s.timestamp}
+              stopAt={s.stopAt}
+              trigger={s.trigger}
+              onClose={() => handleClosePlayer(s.key)}
             />
-          )}
+          ))}
 
           <ResultsList results={results} hasSearched={hasSearched} onSelect={handleSelectResult} />
         </div>
