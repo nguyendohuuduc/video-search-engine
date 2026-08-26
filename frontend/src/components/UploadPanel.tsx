@@ -5,6 +5,15 @@ interface UploadPanelProps {
   onUploaded: () => void
 }
 
+// If someone pastes a markdown-formatted link (e.g. copied out of a chat
+// message) - `[label](https://...)` - pull out just the URL. A raw
+// `type="url"` input rejects the wrapped form outright with a generic
+// browser validation error, which doesn't explain what went wrong.
+function extractUrl(value: string): string {
+  const match = value.trim().match(/^\[.*\]\((https?:\/\/\S+)\)$/)
+  return match ? match[1] : value
+}
+
 export function UploadPanel({ onUploaded }: UploadPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<VideoStatus | null>(null)
@@ -105,7 +114,7 @@ export function UploadPanel({ onUploaded }: UploadPanelProps) {
         <input
           type="url"
           value={youtubeUrl}
-          onChange={(e) => setYoutubeUrl(e.target.value)}
+          onChange={(e) => setYoutubeUrl(extractUrl(e.target.value))}
           placeholder="https://youtube.com/watch?v=..."
           disabled={isBusy}
           className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"

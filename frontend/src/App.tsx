@@ -40,6 +40,7 @@ function App() {
     const requestId = ++searchRequestId.current
     setLoading(true)
     setError(null)
+    setSelection(null) // a new search replaces whatever was playing, not just the results list
     try {
       const data = await searchVideos(query)
       if (requestId !== searchRequestId.current) return
