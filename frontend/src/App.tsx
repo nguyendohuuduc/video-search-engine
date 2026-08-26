@@ -125,7 +125,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
-      <div className="mx-auto max-w-2xl px-4 py-12">
+      <div className={"mx-auto px-4 py-12 " + (selections.length > 0 ? "max-w-6xl" : "max-w-2xl")}>
         <header className="mb-8 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900">
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-white">
@@ -139,30 +139,36 @@ function App() {
           </div>
         </header>
 
-        <div className="flex flex-col gap-4">
-          <UploadPanel onUploaded={refreshVideos} />
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <UploadPanel onUploaded={refreshVideos} />
 
-          <VideoLibrary videos={videos} onSelect={handleSelectVideo} onDelete={handleDeleteVideo} />
+            <VideoLibrary videos={videos} onSelect={handleSelectVideo} onDelete={handleDeleteVideo} />
 
-          <SearchBar onSearch={handleSearch} loading={loading} />
+            <SearchBar onSearch={handleSearch} loading={loading} />
 
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            {error && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            )}
+
+            <ResultsList results={results} hasSearched={hasSearched} onSelect={handleSelectResult} />
+          </div>
+
+          {selections.length > 0 && (
+            <div className="flex flex-col gap-4 lg:sticky lg:top-12 lg:w-[420px] lg:flex-shrink-0">
+              {selections.map((s) => (
+                <VideoPlayer
+                  key={s.key}
+                  videoTitle={s.videoTitle}
+                  videoUrl={s.videoUrl}
+                  seekTo={s.timestamp}
+                  stopAt={s.stopAt}
+                  trigger={s.trigger}
+                  onClose={() => handleClosePlayer(s.key)}
+                />
+              ))}
+            </div>
           )}
-
-          {selections.map((s) => (
-            <VideoPlayer
-              key={s.key}
-              videoTitle={s.videoTitle}
-              videoUrl={s.videoUrl}
-              seekTo={s.timestamp}
-              stopAt={s.stopAt}
-              trigger={s.trigger}
-              onClose={() => handleClosePlayer(s.key)}
-            />
-          ))}
-
-          <ResultsList results={results} hasSearched={hasSearched} onSelect={handleSelectResult} />
         </div>
       </div>
     </div>
